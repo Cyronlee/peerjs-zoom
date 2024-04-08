@@ -11,6 +11,7 @@ import {
   InputGroup,
   InputLeftAddon,
   useToast,
+  Text,
   VStack,
 } from "@chakra-ui/react";
 import React, { useState } from "react";
@@ -46,8 +47,12 @@ const HomePage = () => {
   }
 
   return (
-    <Center w="100vw" minH="100vh">
+    <Center w="100vw" minH="100vh" bgColor="gray.300" padding="48px">
       <VStack spacing="24px">
+        <Heading>PeerJS Zoom</Heading>
+        <Text>
+          WebRTC peer-to-peer data, video, and audio calls, with no server.
+        </Text>
         <Card maxW="sm">
           <CardBody>
             <VStack spacing="24px" alignItems="start">
@@ -61,7 +66,7 @@ const HomePage = () => {
               </InputGroup>
             </VStack>
           </CardBody>
-          <Divider sx={{ borderColor: "gray.500" }} />
+          <Divider sx={{ borderColor: "gray.300" }} />
           <CardFooter justifyContent="flex-end">
             <Button
               size="sm"
@@ -94,7 +99,7 @@ const HomePage = () => {
               </InputGroup>
             </VStack>
           </CardBody>
-          <Divider sx={{ borderColor: "gray.500" }} />
+          <Divider sx={{ borderColor: "gray.300" }} />
           <CardFooter justifyContent="flex-end">
             <Button
               size="sm"

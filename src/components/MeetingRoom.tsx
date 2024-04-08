@@ -2,11 +2,22 @@ import React, { useEffect, useState } from "react";
 import {
   Box,
   Button,
+  ButtonGroup,
   Center,
+  Badge,
   SimpleGrid,
   Text,
+  HStack,
+  IconButton,
   useToast,
 } from "@chakra-ui/react";
+import {
+  BsFillMicFill,
+  BsFillMicMuteFill,
+  BsFillCameraVideoFill,
+  BsFillCameraVideoOffFill,
+} from "react-icons/bs";
+
 import MediaBox from "@/components/MediaBox";
 import { usePlayerStore } from "@/store/player-store";
 import { randomId } from "@/lib/random";
@@ -122,8 +133,16 @@ const MeetingRoom = ({
 
         peer.on("error", (err) => {
           console.error(err);
+          handleLeaveRoom();
+          toast({
+            status: "error",
+            title: "Connection error",
+            description: err.type,
+          });
         });
       } catch (err: any) {
+        console.error(err);
+        handleLeaveRoom();
         toast({
           status: "error",
           title: "Connection error",
@@ -203,13 +222,13 @@ const MeetingRoom = ({
         });
       },
       function (err: any) {
-        console.log("Failed to get local stream", err);
+        console.error(err);
       },
     );
   }, [isMyVideoOn, isMyAudioOn]);
 
-  const handleClickLeaveRoom = () => {
-    peer.destroy();
+  const handleLeaveRoom = () => {
+    peer?.destroy();
     clearPlayers();
     onLeaveRoom();
   };
@@ -222,19 +241,65 @@ const MeetingRoom = ({
 
   return (
     <Box w="100vw" h="100vh">
-      <Center h="64px" bgColor="#1b1b1b" justifyContent="space-around">
-        <Text color="white" fontWeight="bold">
-          Meeting ID: {hostMeetingId}
-        </Text>
-        <Text color="white" fontWeight="bold">
-          My Username: {myUsername}
-        </Text>
-        <Text color="white" fontWeight="bold">
-          My ID: {peer?.id}
-        </Text>
+      {/*<Center h="64px" bgColor="#1b1b1b" justifyContent="space-around">*/}
+      {/*  <Text color="white" fontWeight="bold">*/}
+      {/*    My Username: {myUsername}*/}
+      {/*  </Text>*/}
+      {/*  <Text color="white" fontWeight="bold">*/}
+      {/*    My ID: {peer?.id}*/}
+      {/*  </Text>*/}
+      {/*</Center>*/}
+      <Center
+        h="64px"
+        paddingX="24px"
+        bgColor="#1b1b1b"
+        justifyContent="space-between"
+      >
+        <ButtonGroup>
+          <IconButton
+            variant="outline"
+            color="white"
+            colorScheme="none"
+            aria-label="Mute"
+            size="sm"
+            fontSize="20px"
+            onClick={() => setIsMyAudioOn((prevState) => !prevState)}
+            icon={isMyAudioOn ? <BsFillMicFill /> : <BsFillMicMuteFill />}
+          />
+          <IconButton
+            variant="outline"
+            color="white"
+            colorScheme="none"
+            aria-label="Mute"
+            fontSize="20px"
+            size="sm"
+            onClick={() => setIsMyVideoOn((prevState) => !prevState)}
+            icon={
+              isMyVideoOn ? (
+                <BsFillCameraVideoFill />
+              ) : (
+                <BsFillCameraVideoOffFill />
+              )
+            }
+          />
+          <Button size="sm" colorScheme="blue" onClick={() => pingAllPlayers()}>
+            Ping
+          </Button>
+        </ButtonGroup>
+        <HStack>
+          <Text color="white" fontSize="md" fontWeight="bold">
+            Meeting ID:
+          </Text>
+          <Badge colorScheme="gray" fontSize="md">
+            {hostMeetingId || peer?.id}
+          </Badge>
+        </HStack>
+        <Button size="sm" colorScheme="red" onClick={() => handleLeaveRoom()}>
+          Leave Room
+        </Button>
       </Center>
       <SimpleGrid
-        h="calc(100vh - 64px)"
+        minH="calc(100vh - 64px)"
         bgColor="#111111"
         minChildWidth="480px"
         spacing="8px"
@@ -250,30 +315,6 @@ const MeetingRoom = ({
           ></MediaBox>
         ))}
       </SimpleGrid>
-      <Center h="64px" bgColor="#1b1b1b" justifyContent="space-around">
-        <Button
-          size="sm"
-          onClick={() => setIsMyAudioOn((prevState) => !prevState)}
-        >
-          {isMyAudioOn ? "Mute" : "Unmute"}
-        </Button>
-        <Button
-          size="sm"
-          onClick={() => setIsMyVideoOn((prevState) => !prevState)}
-        >
-          {isMyVideoOn ? "Close Video" : "Open Video"}
-        </Button>
-        <Button size="sm" onClick={() => pingAllPlayers()}>
-          Ping
-        </Button>
-        <Button
-          size="sm"
-          colorScheme="red"
-          onClick={() => handleClickLeaveRoom()}
-        >
-          Leave Room
-        </Button>
-      </Center>
     </Box>
   );
 };

@@ -15,7 +15,7 @@ export interface Player {
 
 interface PlayerState {
   players: Player[];
-  otherPlayers: (id: string) => Player[];
+  otherPlayers: () => Player[];
   getPlayer: (id: string) => Player | undefined;
   addPlayer: (player: Player) => void;
   removePlayer: (id: string) => void;
@@ -28,8 +28,7 @@ interface PlayerState {
 export const usePlayerStore = create<PlayerState>()((set, get) => ({
   players: [],
   getPlayer: (id) => get().players.find((player) => player.id === id),
-  otherPlayers: (id: string) =>
-    get().players.filter((player) => player.id !== id),
+  otherPlayers: () => get().players.filter((player) => !player.isMe),
   addPlayer: (player) => {
     if (!get().getPlayer(player.id)) {
       set((state) => ({ players: [...state.players, player] }));

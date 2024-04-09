@@ -47,7 +47,7 @@ const HomePage = () => {
   }
 
   return (
-    <Center w="100vw" minH="100vh" bgColor="gray.300" padding="48px">
+    <VStack w="100vw" minH="100vh" bgColor="gray.300" paddingY="8vh">
       <VStack spacing="24px">
         <Heading>PeerJS Zoom</Heading>
         <Text>
@@ -112,7 +112,7 @@ const HomePage = () => {
           </CardFooter>
         </Card>
       </VStack>
-    </Center>
+    </VStack>
   );
 };
 

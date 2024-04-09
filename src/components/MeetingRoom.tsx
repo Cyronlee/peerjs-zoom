@@ -32,26 +32,10 @@ const MeetingRoom = ({
   onLeaveRoom: any;
 }) => {
   const toast = useToast();
-  const handleDataReceived = (dataConn: any, data: any) => {
-    console.log("data received");
-    if (data?.type === "player-connected") {
-      addPlayer({
-        id: dataConn.peer,
-        name: data?.data?.username,
-        isMe: false,
-        isHost: dataConn.peer === hostMeetingId,
-        dataConn: dataConn,
-      });
-    } else {
-      toast({
-        status: "info",
-        title: "New message",
-        description: `${getPlayer(dataConn.peer)?.name}: ${data}`,
-      });
-    }
-  };
 
   const [peer, setPeer] = useState<any>(null);
+  const [isMyVideoOn, setIsMyVideoOn] = useState(false);
+  const [isMyAudioOn, setIsMyAudioOn] = useState(false);
 
   const {
     players,
@@ -64,10 +48,9 @@ const MeetingRoom = ({
     setPlayerMediaConn,
   } = usePlayerStore();
 
-  // const [localMediaStream, setLocalMediaStream] = useState(null);
-  const [isMyVideoOn, setIsMyVideoOn] = useState(false);
-  const [isMyAudioOn, setIsMyAudioOn] = useState(false);
+  const isMeetingHost = !hostMeetingId;
 
+  // init peer instance and register events as a receiver
   useEffect(() => {
     (async function initPeer() {
       try {
@@ -81,7 +64,7 @@ const MeetingRoom = ({
             id: peer.id,
             name: myUsername,
             isMe: true,
-            isHost: !hostMeetingId,
+            isHost: isMeetingHost,
           });
           console.log(`peer on open with id: ${id}`);
         });
@@ -89,22 +72,26 @@ const MeetingRoom = ({
         peer.on("connection", function (dataConn) {
           console.log(`receive data connection from ${dataConn.peer}`);
 
-          // add others
-          // addPlayer({
-          //   id: conn.peer,
-          //   name: conn.metadata?.username,
-          //   isMe: false,
-          //   isHost: conn.peer === hostMeetingId,
-          //   peerConn: conn,
-          // });
-
           dataConn.on("open", function () {
             dataConn.send({
               type: "player-connected",
               data: {
                 username: myUsername,
+                isHost: isMeetingHost,
               },
             });
+            if (isMeetingHost) {
+              dataConn.send({
+                type: "other-players",
+                data: otherPlayers()
+                  .filter((player) => player.id !== dataConn.peer)
+                  .map((player) => ({
+                    id: player.id,
+                    username: player.name,
+                    isHost: player.isHost,
+                  })),
+              });
+            }
           });
 
           dataConn.on("data", function (data) {
@@ -112,7 +99,7 @@ const MeetingRoom = ({
           });
 
           dataConn.on("close", () => {
-            removePlayer(dataConn.peer);
+            handlePlayerDisconnected(dataConn);
           });
         });
 
@@ -152,13 +139,72 @@ const MeetingRoom = ({
     })();
   }, [hostMeetingId]);
 
+  // auto join meeting after peer instance built
   useEffect(() => {
     if (peer && hostMeetingId) {
-      connectToMeeting(hostMeetingId);
+      connectPlayer(hostMeetingId);
     }
   }, [peer]);
 
-  const connectToMeeting = (id: string) => {
+  // share my video & audio to all players
+  useEffect(() => {
+    if (!peer) return;
+    if (!isMyVideoOn && !isMyAudioOn) {
+      setPlayerStream(peer.id, null);
+      otherPlayers().forEach((player) => {
+        if (player.mediaConn) {
+          player.mediaConn.close();
+        }
+      });
+      return;
+    }
+    navigator.getUserMedia(
+      { video: isMyVideoOn, audio: isMyAudioOn },
+      function (localStream: any) {
+        setPlayerStream(peer.id, localStream);
+
+        // establish media connection with other players
+        otherPlayers().forEach((player) => {
+          const mediaConn = peer.call(player.id, localStream);
+          console.log(`calling to ${player.id}`);
+          setPlayerMediaConn(player.id, mediaConn);
+          mediaConn.on("stream", function (remoteStream: any) {
+            setPlayerStream(player.id, remoteStream);
+          });
+        });
+      },
+      function (err: any) {
+        console.error(err);
+      },
+    );
+  }, [isMyVideoOn, isMyAudioOn]);
+
+  const handleDataReceived = (dataConn: any, data: any) => {
+    console.log(
+      `data received form: ${dataConn.peer} data: ${JSON.stringify(data)}`,
+    );
+    if (data?.type === "player-connected") {
+      addPlayer({
+        id: dataConn.peer,
+        name: data?.data?.username,
+        isMe: false,
+        isHost: data?.data?.isHost,
+        dataConn: dataConn,
+      });
+    } else if (data?.type === "other-players") {
+      data?.data?.forEach((otherPlayer) => {
+        connectPlayer(otherPlayer?.id);
+      });
+    } else {
+      toast({
+        status: "info",
+        title: "New message",
+        description: `${getPlayer(dataConn.peer)?.name}: ${data}`,
+      });
+    }
+  };
+
+  const connectPlayer = (id: string) => {
     console.log(`connecting to ${id}: `);
     const dataConn = peer.connect(id, {
       metadata: {
@@ -175,57 +221,17 @@ const MeetingRoom = ({
           username: myUsername,
         },
       });
-      // addPlayer({
-      //   id: dataConn.peer,
-      //   name: dataConn.metadata?.username,
-      //   isMe: false,
-      //   isHost: dataConn.peer === hostMeetingId,
-      //   peerConn: dataConn,
-      // });
     });
     dataConn.on("data", (data: any) => {
       handleDataReceived(dataConn, data);
     });
     dataConn.on("close", () => {
-      removePlayer(dataConn.peer);
+      handlePlayerDisconnected(dataConn);
     });
     dataConn.on("error", (err: any) => {
       console.error(err);
     });
   };
-
-  // share my video & audio
-  useEffect(() => {
-    if (!peer) return;
-    if (!isMyVideoOn && !isMyAudioOn) {
-      setPlayerStream(peer.id, null);
-      otherPlayers(peer.id).forEach((player) => {
-        if (player.mediaConn) {
-          player.mediaConn.close();
-        }
-      });
-      return;
-    }
-    navigator.getUserMedia(
-      { video: isMyVideoOn, audio: isMyAudioOn },
-      function (localStream: any) {
-        setPlayerStream(peer.id, localStream);
-
-        // establish media connection with other players
-        otherPlayers(peer.id).forEach((player) => {
-          const mediaConn = peer.call(player.id, localStream);
-          console.log(`calling to ${player.id}`);
-          setPlayerMediaConn(player.id, mediaConn);
-          mediaConn.on("stream", function (remoteStream: any) {
-            setPlayerStream(player.id, remoteStream);
-          });
-        });
-      },
-      function (err: any) {
-        console.error(err);
-      },
-    );
-  }, [isMyVideoOn, isMyAudioOn]);
 
   const handleLeaveRoom = () => {
     peer?.destroy();
@@ -233,8 +239,21 @@ const MeetingRoom = ({
     onLeaveRoom();
   };
 
+  const handlePlayerDisconnected = (dataConn) => {
+    if (getPlayer(dataConn.peer)?.isHost) {
+      toast({
+        status: "warning",
+        title: "Host left",
+        description: "Meeting is over cus host left this room",
+      });
+      handleLeaveRoom();
+    } else {
+      removePlayer(dataConn.peer);
+    }
+  };
+
   const pingAllPlayers = () => {
-    otherPlayers(peer.id).forEach(
+    otherPlayers().forEach(
       (player) => player.dataConn && player.dataConn.send("Pings you"),
     );
   };
@@ -291,7 +310,7 @@ const MeetingRoom = ({
             Meeting ID:
           </Text>
           <Badge colorScheme="gray" fontSize="md">
-            {hostMeetingId || peer?.id}
+            {hostMeetingId || peer?.id || "connecting.."}
           </Badge>
         </HStack>
         <Button size="sm" colorScheme="red" onClick={() => handleLeaveRoom()}>

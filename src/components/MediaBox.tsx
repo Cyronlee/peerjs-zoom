@@ -57,7 +57,7 @@ const MediaBox = ({
           textTransform: "none",
         }}
       >
-        {username} {isHost && "- HOST"}
+        {username} {isMe && "- ME"} {isHost && "- HOST"}
       </Badge>
     </Center>
   );

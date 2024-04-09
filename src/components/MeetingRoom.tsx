@@ -309,7 +309,13 @@ const MeetingRoom = ({
           <Text color="white" fontSize="md" fontWeight="bold">
             Meeting ID:
           </Text>
-          <Badge colorScheme="gray" fontSize="md">
+          <Badge
+            colorScheme="gray"
+            fontSize="md"
+            sx={{
+              textTransform: "none",
+            }}
+          >
             {hostMeetingId || peer?.id || "connecting.."}
           </Badge>
         </HStack>

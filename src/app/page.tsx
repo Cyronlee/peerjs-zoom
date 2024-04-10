@@ -82,7 +82,14 @@ const HomePage = () => {
           />
         </HStack>
         <Text>
-          WebRTC P2P data, video, and audio calls, built with{" "}
+          <Link
+            sx={{ textDecoration: "underline" }}
+            isExternal
+            href="https://developer.mozilla.org/en-US/docs/Web/API/WebRTC_API/Protocols"
+          >
+            WebRTC
+          </Link>{" "}
+          P2P data, video, and audio calls, built with{" "}
           <Link
             sx={{ textDecoration: "underline" }}
             isExternal
@@ -179,6 +186,11 @@ const HomePage = () => {
             </CardBody>
           </Card>
         </MotionFadeIn>
+        {navigator?.userAgent?.includes("Chrome") && (
+          <Text textAlign="center">
+            debug WebRTC in chrome://webrtc-internals
+          </Text>
+        )}
       </VStack>
     </VStack>
   );
